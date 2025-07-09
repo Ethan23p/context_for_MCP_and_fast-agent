@@ -1,3 +1,4 @@
+> Last updated: July 8th 2025
 # Context for MCP and fast-agent
 
 This repository contains my latest context files for building AI agents using the Model Context Protocol (MCP) and the `fast-agent` framework.
