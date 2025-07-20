@@ -1,132 +1,181 @@
-import os
-import fnmatch
+#!/usr/bin/env python3
+"""
+Context generation script for MCP and Fast-Agent repositories.
+Automatically loads configuration and packages projects into context files.
+"""
+
 import argparse
+import sys
 from pathlib import Path
-from typing import List, Set
+from typing import List, Dict, Any
 
-# --- CONFIGURATION ---
-OUTPUT_DIR = "generated_context"
+# Import our modular components
+from config_context import get_packaging_jobs, get_output_dir
+from context_generator.project_packager import create_project
 
-# --- Helper Functions ---
 
-def should_ignore(path: Path, root_path: Path, ignore_patterns: Set[str]) -> bool:
-    try:
-        relative_path = str(path.relative_to(root_path)).replace(os.path.sep, '/')
-        for pattern in ignore_patterns:
-            if fnmatch.fnmatch(relative_path, pattern):
-                return True
-    except ValueError:
-        return True
-    return False
-
-def build_tree(current_path: Path, root_path: Path, ignore_patterns: Set[str], prefix: str = "") -> str:
-    tree_lines = []
-    try:
-        items = sorted([p for p in current_path.iterdir()], key=lambda p: (p.is_file(), p.name.lower()))
-    except FileNotFoundError:
-        return ""
+class ContextGenerator:
+    """Main class for generating context files from repositories."""
     
-    valid_items = [item for item in items if not should_ignore(item, root_path, ignore_patterns)]
-
-    for i, item in enumerate(valid_items):
-        is_last = (i == len(valid_items) - 1)
-        connector = "└── " if is_last else "├── "
-        icon = "📄" if item.is_file() else "📁"
-        tree_lines.append(f"{prefix}{connector}{icon} {item.name}")
+    def __init__(self, root_dir: Path, output_dir: Path):
+        self.root_dir = root_dir
+        self.output_dir = output_dir
+        self.packaging_jobs = get_packaging_jobs()
         
-        if item.is_dir():
-            new_prefix = prefix + ("    " if is_last else "│   ")
-            tree_lines.extend(build_tree(item, root_path, ignore_patterns, new_prefix).splitlines())
-            
-    return "\n".join(tree_lines)
-
-def write_file_contents(output_f, current_path: Path, root_path: Path, ignore_patterns: Set[str]):
-    try:
-        items = sorted([p for p in current_path.iterdir()], key=lambda p: (p.is_file(), p.name.lower()))
-    except FileNotFoundError:
-        return
-
-    for item in items:
-        if should_ignore(item, root_path, ignore_patterns):
-            continue
-            
-        if item.is_file():
-            relative_path_str = str(item.relative_to(root_path)).replace(os.path.sep, '/')
-            output_f.write(f"--- START OF FILE {relative_path_str} ---\n")
-            try:
-                content = item.read_text(encoding='utf-8', errors='replace')
-                output_f.write(f"{content}\n")
-            except Exception as e:
-                output_f.write(f"[Error reading file: {e}]\n")
-            output_f.write(f"--- END OF FILE {relative_path_str} ---\n\n\n")
-        elif item.is_dir():
-            write_file_contents(output_f, item, root_path, ignore_patterns)
-
-def package_project(source_path: Path, output_path: Path, ignore_patterns: List[str]):
-    print(f"📦 Packaging '{source_path}' into '{output_path}'...")
+    def setup_output_directory(self) -> bool:
+        """Create the output directory if it doesn't exist."""
+        try:
+            self.output_dir.mkdir(exist_ok=True)
+            print(f"✅ Output directory ready: '{self.output_dir}'")
+            return True
+        except Exception as e:
+            print(f"❌ Error creating output directory: {e}")
+            return False
     
-    default_ignores = {".git", ".venv", "__pycache__", ".vscode", "*.pyc", "*.bak", "*.optimized.*", "dist", "node_modules", ".DS_Store"}
-    all_ignores = default_ignores.union(set(ignore_patterns))
-
-    with output_path.open("w", encoding="utf-8") as f:
-        f.write(f"# Project: {source_path.name}\n\n")
-        f.write("## Directory Structure\n\n```\n")
-        tree_str = f"📁 {source_path.name}\n" + build_tree(source_path, source_path, all_ignores)
-        f.write(tree_str)
-        f.write("\n```\n\n------------------------------------------------------------\n\n## File Contents\n\n")
-        write_file_contents(f, source_path, source_path, all_ignores)
-        f.write("\n--- PROJECT PACKAGING COMPLETE ---")
+    def validate_source_path(self, source_path: Path, job_info: Dict[str, Any]) -> bool:
+        """Validate that a source path exists and is accessible."""
+        if not source_path.exists():
+            print(f"⚠️  Warning: Source path not found, skipping job.")
+            print(f"   Path: '{source_path}'")
+            print(f"   Job: {job_info['repo_name']}/{job_info['sub_path']}")
+            return False
+        return True
     
-    print(f"✅ Successfully packaged '{output_path}'.")
+    def process_job(self, job: Dict[str, Any]) -> bool:
+        """Process a single packaging job."""
+        repo_path = self.root_dir / job["repo_name"]
+        source_path = repo_path / job["sub_path"]
+        output_path = self.output_dir / job["output_filename"]
+        
+        if not self.validate_source_path(source_path, job):
+            return False
+        
+        project = create_project(
+            source_path=source_path,
+            output_path=output_path,
+            ignore_patterns=job["ignore"]
+        )
+        
+        success = project.package()
+        
+        # Show token statistics
+        if success:
+            stats = project.get_token_stats()
+            token_type = "tokens" if stats["token_counting_available"] else "words"
+            print(f"   📊 {stats['total_files']} files, {stats['total_tokens']:,} {token_type}")
+            if stats['total_files'] > 0:
+                print(f"   📈 Average: {stats['avg_tokens_per_file']:.0f} {token_type}/file")
+        
+        return success
+    
+    def run(self) -> bool:
+        """Run the complete context generation process."""
+        print(f"🚀 Starting context generation...")
+        print(f"   Root directory: {self.root_dir}")
+        print(f"   Output directory: {self.output_dir}")
+        print(f"   Jobs to process: {len(self.packaging_jobs)}")
+        
+        # Check token counting availability
+        from context_generator.project_packager import TOKEN_COUNTING_AVAILABLE
+        if TOKEN_COUNTING_AVAILABLE:
+            print(f"   🧮 Token counting: Available (tiktoken)")
+        else:
+            print(f"   ⚠️  Token counting: Word count only (install tiktoken for accurate counting)")
+        print()
+        
+        if not self.setup_output_directory():
+            return False
+        
+        successful_jobs = 0
+        failed_jobs = 0
+        total_tokens = 0
+        total_files = 0
+        
+        for i, job in enumerate(self.packaging_jobs, 1):
+            print(f"📋 Processing job {i}/{len(self.packaging_jobs)}: {job['repo_name']}/{job['sub_path']}")
+            
+            if self.process_job(job):
+                successful_jobs += 1
+                # Get stats from the last processed project
+                from context_generator.project_packager import create_project
+                repo_path = self.root_dir / job["repo_name"]
+                source_path = repo_path / job["sub_path"]
+                output_path = self.output_dir / job["output_filename"]
+                project = create_project(source_path, output_path, job["ignore"])
+                stats = project.get_token_stats()
+                total_tokens += stats["total_tokens"]
+                total_files += stats["total_files"]
+            else:
+                failed_jobs += 1
+            
+            print("-" * 50)
+        
+        # Summary
+        print(f"\n📊 Generation Summary:")
+        print(f"   ✅ Successful: {successful_jobs}")
+        print(f"   ❌ Failed: {failed_jobs}")
+        print(f"   📁 Total: {len(self.packaging_jobs)}")
+        
+        if total_files > 0:
+            from context_generator.project_packager import TOKEN_COUNTING_AVAILABLE
+            token_type = "tokens" if TOKEN_COUNTING_AVAILABLE else "words"
+            print(f"   📄 Files processed: {total_files:,}")
+            print(f"   🧮 Total {token_type}: {total_tokens:,}")
+            print(f"   📈 Average {token_type}/file: {total_tokens / total_files:.0f}")
+        
+        if failed_jobs == 0:
+            print(f"\n🎉 All jobs completed successfully!")
+            return True
+        else:
+            print(f"\n⚠️  {failed_jobs} job(s) failed. Check the output above for details.")
+            return False
 
-# --- Main Execution ---
+
+def validate_root_directory(root_dir: Path) -> bool:
+    """Validate that the root directory exists and is accessible."""
+    if not root_dir.exists():
+        print(f"❌ Error: Root directory not found at '{root_dir}'")
+        return False
+    
+    if not root_dir.is_dir():
+        print(f"❌ Error: '{root_dir}' is not a directory")
+        return False
+    
+    return True
+
 
 def main():
-    parser = argparse.ArgumentParser(description="Regenerate full context files from source repositories.")
-    parser.add_argument("--root-dir", required=True, help="The root directory containing the cloned repositories.")
+    """Main entry point for the context generation script."""
+    parser = argparse.ArgumentParser(
+        description="Generate context files from source repositories.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python generate_context.py --root-dir /path/to/repos
+  python generate_context.py --root-dir ./repositories
+        """
+    )
+    parser.add_argument(
+        "--root-dir", 
+        required=True, 
+        help="Root directory containing the cloned repositories"
+    )
+    
     args = parser.parse_args()
     
+    # Validate inputs
     root_dir = Path(args.root_dir)
-    if not root_dir.is_dir():
-        print(f"❌ Error: Root directory not found at '{root_dir}'")
-        return
+    if not validate_root_directory(root_dir):
+        sys.exit(1)
+    
+    output_dir = Path(get_output_dir())
+    
+    # Create and run the generator
+    generator = ContextGenerator(root_dir, output_dir)
+    success = generator.run()
+    
+    sys.exit(0 if success else 1)
 
-    output_dir = Path(OUTPUT_DIR)
-    output_dir.mkdir(exist_ok=True)
-    print(f"✅ Created output directory: '{output_dir}'\n")
-
-    packaging_jobs = [
-        {"repo_name": "fast-agent", "sub_path": "examples", "output_filename": "fast_agent_examples_context.md", "ignore": ["*.png", "*.jpg", "*.jpeg", "*.ico"]},
-        {"repo_name": "fast-agent", "sub_path": "tests", "output_filename": "fast_agent_tests_context.md", "ignore": ["*.png", "*.jpg"]},
-        {"repo_name": "servers", "sub_path": "src/everything", "output_filename": "mcp_server_everything_context.md", "ignore": []},
-        {"repo_name": "servers", "sub_path": "src/fetch", "output_filename": "mcp_server_fetch_context.md", "ignore": []},
-        {"repo_name": "servers", "sub_path": "src/filesystem", "output_filename": "mcp_server_filesystem_context.md", "ignore": []},
-        {"repo_name": "servers", "sub_path": "src/git", "output_filename": "mcp_server_git_context.md", "ignore": []},
-        {"repo_name": "servers", "sub_path": "src/time", "output_filename": "mcp_server_time_context.md", "ignore": []},
-        {"repo_name": "modelcontextprotocol", "sub_path": "docs/specification", "output_filename": "mcp_spec_full_version_history_context.md", "ignore": []},
-        {"repo_name": "servers", "sub_path": ".", "output_filename": "mcp_servers_full_directory_context.md", "ignore": ["src"]},
-        {"repo_name": "modelcontextprotocol", "sub_path": "docs/specification/draft", "output_filename": "mcp_spec_schema_context.md", "ignore": []},
-        {"repo_name": "modelcontextprotocol", "sub_path": "docs/links/sdks", "output_filename": "mcp_spec_sdk_links_context.md", "ignore": []},
-        {"repo_name": "fast-agent", "sub_path": "scripts", "output_filename": "fast_agent_dev_scripts_context.md", "ignore": []},
-        {"repo_name": "modelcontextprotocol", "sub_path": ".", "output_filename": "mcp_spec_concepts_context.md", "ignore": ["docs", ".github", "schema", "LICENSE", ".gitignore", "CONTRIBUTING.md"]},
-        {"repo_name": "fast-agent", "sub_path": ".", "output_filename": "fast_agent_core_context.md", "ignore": ["src", "examples", "tests", "scripts", ".git", ".github", ".vscode", "dist"]},
-    ]
-
-    print(f"--- Starting context regeneration from source repos in '{root_dir}' into '{output_dir}' ---\n")
-
-    for job in packaging_jobs:
-        repo_path = root_dir / job["repo_name"]
-        source_path = repo_path / job["sub_path"]
-        
-        if not source_path.exists():
-            print(f"⚠️ Warning: Source path not found, skipping job. Path: '{source_path}'")
-            continue
-            
-        output_path = output_dir / job["output_filename"]
-        package_project(source_path, output_path, job["ignore"])
-        print("-" * 20)
-
-    print("✅ All regeneration tasks complete.")
 
 if __name__ == "__main__":
     main()
