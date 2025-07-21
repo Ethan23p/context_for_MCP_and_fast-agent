@@ -1,4 +1,4 @@
-info last fetched on: 2025-07-09
+info last fetched on: 2025-07-20
 Site Last-Modified: Not available
 # Files and Resources
 
@@ -342,11 +342,15 @@ from mcp_agent.core.request_params import RequestParams
   name="agent",                          # name of the agent
   instruction="You are a helpful Agent", # base instruction for the agent
   servers=["filesystem"],                # list of MCP Servers for the agent
+  #tools={"filesystem": ["tool_1", "tool_2"]  # Filter the tools available to the agent. Defaults to all
+  #resources={"filesystem: ["resource_1", "resource_2"]} # Filter the resources available to the agent. Defaults to all
+  #prompts={"filesystem": ["prompt_1", "prompt_2"]}  # Filter the prompts available to the agent. Defaults to all.
   model="o3-mini.high",                  # specify a model for the agent
   use_history=True,                      # agent maintains chat history
   request_params=RequestParams(temperature= 0.7), # additional parameters for the LLM (or RequestParams())
   human_input=True,                      # agent can request human input
-  elicitation_handler=ElicitationFnT     # custom elicitation handler (from mcp.client.session)
+  elicitation_handler=ElicitationFnT,    # custom elicitation handler (from mcp.client.session)
+  api_key="programmatic-api-key",        # specify the API KEY programmatically, it will override which provided in config file or env var
 )
 
 ```
@@ -398,9 +402,13 @@ from mcp_agent.core.request_params import RequestParams
   agents=["agent1", "agent2", "agent3"], # list of agent names router can delegate to
   instruction="routing instruction",     # any extra routing instructions
   servers=["filesystem"],                # list of servers for the routing agent
+  #tools={"filesystem": ["tool_1", "tool_2"]  # Filter the tools available to the agent. Defaults to all
+  #resources={"filesystem: ["resource_1", "resource_2"]} # Filter the resources available to the agent. Defaults to all
+  #prompts={"filesystem": ["prompt_1", "prompt_2"]}  # Filter the prompts available to the agent. Defaults to all
   model="o3-mini.high",                  # specify routing model
   use_history=False,                     # router maintains conversation history
   human_input=False,                     # whether router can request human input
+  api_key="programmatic-api-key",        # specify the API KEY programmatically, it will override which provided in config file or env var
 )
 
 ```
@@ -417,6 +425,7 @@ from mcp_agent.core.request_params import RequestParams
   human_input=False,                     # whether orchestrator can request human input
   plan_type="full",                      # planning approach: "full" or "iterative"
   max_iterations=5,                      # maximum number of full plan attempts, or iterations
+  api_key="programmatic-api-key",        # specify the API KEY programmatically, it will override which provided in config file or env var
 )
 
 ```
@@ -429,12 +438,16 @@ from mcp_agent.core.request_params import RequestParams
   name="custom",                         # name of the custom agent
   instruction="instruction",             # base instruction for the orchestrator
   servers=["filesystem"],                # list of MCP Servers for the agent
+  MCP Servers for the agent
+  #tools={"filesystem": ["tool_1", "tool_2"]  # Filter the tools available to the agent. Defaults to all
+  #resources={"filesystem: ["resource_1", "resource_2"]} # Filter the resources available to the agent. Defaults to all
+  #prompts={"filesystem": ["prompt_1", "prompt_2"]}  # Filter the prompts available to the agent. Defaults to all
   model="o3-mini.high",                  # specify a model for the agent
   use_history=True,                      # agent maintains chat history
   request_params=RequestParams(temperature= 0.7), # additional parameters for the LLM (or RequestParams())
   human_input=True,                      # agent can request human input
-  elicitation_handler=ElicitationFnT     # custom elicitation handler (from mcp.client.session)
-
+  elicitation_handler=ElicitationFnT,    # custom elicitation handler (from mcp.client.session)
+  api_key="programmatic-api-key",        # specify the API KEY programmatically, it will override which provided in config file or env var
 )
 
 ```
@@ -1308,6 +1321,75 @@ Check the [Aliyun Official Documentation](https://help.aliyun.com/zh/model-studi
 
 | Model Alias | Maps to | | --- | --- | | `qwen-turbo` | `qwen-turbo-2025-02-11` | | `qwen-plus` | `qwq-plus-2025-03-05` | | `qwen-max` | `qwen-max-2024-09-19` | | `qwen-long` | *undocumented* |
 
+## AWS Bedrock
+
+AWS Bedrock provides access to multiple foundation models from Amazon, Anthropic, AI21, Cohere, Meta, Mistral, and other providers through a unified API. fast-agent supports the full range of Bedrock models with intelligent capability detection and optimization.
+
+**Key Features:**
+
+- **Multi-provider model access**: Nova, Claude, Titan, Cohere, Llama, Mistral, and more
+- **Intelligent capability detection**: Automatically handles models that don't support system messages or tool use
+- **Optimized streaming**: Uses streaming when supported, falls back to non-streaming when required
+- **Model-specific optimizations**: Tailored configurations for different model families
+
+**YAML Configuration:**
+
+```yaml
+bedrock:
+  region: "us-east-1" # Required - AWS region where Bedrock is available
+  profile: "default"  # Optional - AWS profile to use (defaults to "default")
+                      # Only needed on local machines, not required on AWS
+
+```
+
+**Environment Variables:**
+
+- `AWS_REGION` or `AWS_DEFAULT_REGION`: AWS region (e.g., `us-east-1`)
+- `AWS_PROFILE`: Named AWS profile to use
+- `AWS_ACCESS_KEY_ID`: Your AWS access key (handled by boto3)
+- `AWS_SECRET_ACCESS_KEY`: Your AWS secret key (handled by boto3)
+- `AWS_SESSION_TOKEN`: AWS session token for temporary credentials (handled by boto3)
+
+**Model Name Format:**
+
+Use `bedrock.model-id` where `model-id` is the Bedrock model identifier:
+
+- `bedrock.amazon.nova-premier-v1:0` - Amazon Nova Premier
+- `bedrock.amazon.nova-pro-v1:0` - Amazon Nova Pro
+- `bedrock.amazon.nova-lite-v1:0` - Amazon Nova Lite
+- `bedrock.anthropic.claude-3-7-sonnet-20241022-v1:0` - Claude 3.7 Sonnet
+- `bedrock.anthropic.claude-3-5-sonnet-20241022-v2:0` - Claude 3.5 Sonnet v2
+- `bedrock.meta.llama3-1-405b-instruct-v1:0` - Meta Llama 3.1 405B
+- `bedrock.mistral.mistral-large-2402-v1:0` - Mistral Large
+
+**Supported Models:**
+
+The provider automatically detects and handles model-specific capabilities:
+
+- **System messages**: Automatically injects system prompts into user messages for models that don't support them (Titan, Cohere Command Text, etc.)
+- **Tool use**: Skips tool preparation for models that don't support tools (Titan, Claude v2, Llama 2/3, etc.)
+- **Streaming**: Uses non-streaming API when models don't support streaming with tools
+
+Note that Bedrock contains some models that may perform poorly in some areas, including INSTRUCT models as well as models that are made to be fine-tuned for specific use cases. If you are unsure about model capabilities, be sure to read the documentation.
+
+**Model Capabilities:**
+
+Refer to the [AWS Bedrock documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-supported-models-features.html) for the latest model capabilities including system prompts, tool use, vision, and streaming support.
+
+**Authentication:**
+
+AWS Bedrock uses standard AWS authentication. Configure credentials using:
+
+1. **AWS CLI**: Run `aws configure` to set up credentials. AWS SSO is a great choice for local development.
+1. **Environment variables**: Set `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
+1. **IAM roles**: Use IAM roles when running on EC2 or other AWS services
+1. **AWS profiles**: Use named profiles with `AWS_PROFILE` environment variable
+
+Required IAM permissions:
+
+- `bedrock:InvokeModel`
+- `bedrock:InvokeModelWithResponseStream`
+
 MCP Servers are configured in the `fastagent.config.yaml` file. Secrets can be kept in `fastagent.secrets.yaml`, which follows the same format (**fast-agent** merges the contents of the two files).
 
 ## Adding a STDIO Server
@@ -1337,6 +1419,33 @@ This MCP Server can then be used with an agent as follows:
 
 ```python
 @fast.agent(name="Search", servers=["server_one"])
+
+```
+
+## MCP Filtering
+
+Agents and Workflows supporting the `servers` parameter have the ability to filter the tools, resources and prompts available to the agent. This can greatly reduce the amount of context generated for the agents - which can both increase the accuracy of the responses and reduce costs due to the lower token count of the context.
+
+The default behavior is to include all tools, prompts and resources from the configured MCP servers, but this can be overridden by the `tools`, `prompts` and `resources` parameters. These parameters accept a Dict, where the key of the dict in the name of the server to filter, and the value is a list of the tool names, resource names and prompt names respectively.
+
+For example:
+
+```python
+@fast.agent(
+  name="Search,
+  instruction="You are a search agent that helps users fint files using the provided tools.",
+  servers=["server_one", "server_two"]  # use two MCP servers
+
+  # Filter some of the MCP resources avalable to the agent
+  tools={
+    "server_one": ["search_files", "search_directory"],
+    "server_two": ["regex_search"]
+  }
+  prompts = None  # DOn't filter prompts (default behavior)
+  resources = {
+    "server_two": ["file://get_tree"] # Only filter resources on server_two
+  }
+)
 
 ```
 
