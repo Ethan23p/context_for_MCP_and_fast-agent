@@ -11,6 +11,14 @@ This repository contains context files for building AI agents using the Model Co
 # Generate context files from your cloned repos
 python generate_context.py --root-dir "path/to/your/repos"
 
+# Output to the 'generated_context' folder in this project (regardless of config)
+python generate_context.py --root-dir "path/to/your/repos" --output-here
+# or using the short form
+python generate_context.py --root-dir "path/to/your/repos" -oh
+
+# With custom max file size (5MB)
+python generate_context.py --root-dir "path/to/your/repos" -oh --max-file-size 5242880
+
 # Optimize the generated files (optional)
 python optimize_context.py
 ```
@@ -27,6 +35,9 @@ python optimize_context.py
 - **Token counting** (optional: `pip install tiktoken` for accurate counting)
 - **Progress tracking** and detailed statistics
 - **Graceful fallbacks** for missing dependencies
+- **Smart file filtering** with comprehensive ignore patterns
+- **Configurable max file size** to avoid processing large files
+- **Flexible output location**: use `--output-here`/`-oh` to always output to this repo's `generated_context` folder
 
 ## Directory Structure
 
@@ -34,6 +45,10 @@ python optimize_context.py
 - **`optimized_context/`** - Token-efficient versions for LLM use
 - **`context_generator/`** - Modular packaging logic
 - **`config_context.py`** - Configuration for packaging jobs
+
+## Configuration
+
+Packaging jobs (what gets included in each context file) are defined in `config_context.py`. By default, no jobs are hardcoded for 'fast-agent' or 'servers'—edit the config to suit your needs.
 
 ## Example Execution Log
 
@@ -44,23 +59,23 @@ python optimize_context.py
 🚀 Starting context generation...
    Root directory: /path/to/repos
    Output directory: generated_context
-   Jobs to process: 14
+   Jobs to process: 12+
    🧮 Token counting: Available (tiktoken)
 
-📋 Processing job 1/14: fast-agent/examples
-📦 Packaging 'fast-agent/examples' into 'generated_context/fast_agent_examples_context.md'...
-✅ Successfully packaged 'generated_context/fast_agent_examples_context.md'.
+📋 Processing job 1/12+: my-repo/examples
+📦 Packaging 'my-repo/examples' into 'generated_context/my_repo_examples_context.md'...
+✅ Successfully packaged 'generated_context/my_repo_examples_context.md'.
    📊 25 files, 12,847 tokens
    📈 Average: 514 tokens/file
 --------------------------------------------------
 
 📊 Generation Summary:
-   ✅ Successful: 14
+   ✅ Successful: 12+
    ❌ Failed: 0
-   📁 Total: 14
-   📄 Files processed: 342
-   🧮 Total tokens: 156,234
-   📈 Average tokens/file: 457
+   📁 Total: 12+
+   📄 Files processed: 1,000+
+   🧮 Total tokens: 200,000+
+   📈 Average tokens/file: ~200
 
 🎉 All jobs completed successfully!
 ```
