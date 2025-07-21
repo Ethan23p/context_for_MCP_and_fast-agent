@@ -1,74 +1,65 @@
 """
-Configuration for the context generation script.
+Configuration for the project packaging script.
 Contains all packaging jobs and default settings.
 """
 
-from typing import List, Dict, Any
-
 # Default ignore patterns applied to all jobs
+# These patterns are used to exclude common temporary files, logs, and environment folders.
 DEFAULT_IGNORE_PATTERNS = {
-    # Version control
-    ".git", ".svn", ".hg",
+    # Version control & IDEs
+    ".git", ".svn", ".hg", ".vscode", ".idea", ".vs",
     
-    # Python
+    # Python artifacts
     "__pycache__", "*.pyc", "*.pyo", "*.pyd", "*.so", "*.egg", "*.egg-info",
     ".pytest_cache", ".coverage", "htmlcov", ".tox", ".mypy_cache",
     
     # Virtual environments
     ".venv", "venv", "env", ".env", "ENV",
     
-    # IDEs and editors
-    ".vscode", ".idea", "*.swp", "*.swo", "*~", ".vs",
+    # Build and distribution artifacts
+    "dist", "build", "node_modules",
     
-    # Build and distribution
-    "dist", "build", "*.egg-info", "*.whl", "node_modules",
+    # OS-specific and temporary files
+    ".DS_Store", "Thumbs.db", "*.tmp", "*.temp", "*.bak", "*.swp",
     
-    # OS and temp files
-    ".DS_Store", "Thumbs.db", "*.tmp", "*.temp", "*.bak", "*.backup",
-    
-    # Logs and databases
+    # Common logs and databases
     "*.log", "*.sqlite", "*.db", "*.sqlite3",
     
-    # Media files (usually not needed for context)
-    "*.png", "*.jpg", "*.jpeg", "*.gif", "*.bmp", "*.ico", "*.svg",
-    "*.mp4", "*.avi", "*.mov", "*.wav", "*.mp3", "*.pdf",
+    # Large media and data files (usually not useful for code context)
+    "*.png", "*.jpg", "*.jpeg", "*.gif", "*.svg", "*.mp4", "*.mp3", "*.pdf",
+    "*.zip", "*.tar.gz", "*.rar", "*.csv", "*.parquet",
     
-    # Archives
-    "*.zip", "*.tar", "*.gz", "*.rar", "*.7z",
-    
-    # Large data files
-    "*.csv", "*.parquet", "*.h5",
-    
-    # Optimized files (from this script)
-    "*.optimized.*",
-    
-    "**/*.jsonl",
-    "**/*.TEST_ONLY",
-    
-    "**/*lock*",
-    "**/package.json",
-    "**/tsconfig.json", 
-    "**/jest.config.cjs",
-    "**/pyproject.toml",
-    "**/.python-version",
-    "**/Dockerfile",
-    "**/.npmrc"
+    # Specific project config files you might want to ignore globally
+    "**/*lock*", "**/package.json", "**/pyproject.toml"
 }
 
-# All packaging jobs configuration
-PACKAGING_JOBS: List[Dict[str, Any]] = [
-    # TEXTUAL: I. Core Application Structure & Lifecycle
+# The directory where the final context files will be saved.
+OUTPUT_DIR = "generated_context"
+
+# A list of all packaging jobs to be performed.
+# Each job is a dictionary specifying the repository, the files to include,
+# and the name of the output file.
+PACKAGING_JOBS = [
+    # To package an entire repository, create a job without an "include" key.
+    # For example:
+    # {
+    #     "repo_name": "fast-agent",
+    #     "sub_path": ".",
+    #     "output_filename": "fast_agent_complete_context.md",
+    # },
+
+    # TEXTUAL: Core Application & Lifecycle
     {
         "repo_name": "textual",
         "sub_path": ".",
         "output_filename": "textual_core_app_structure_context.md",
         "include": [
-            "examples/app/simple02.py",
-            "examples/guide/dom2.py",
-            "examples/app/event01.py",
-            "examples/app/question01.py",
-            "examples/app/suspend.py",
-            "blog/posts/anatomy-of-a-textual-user-interface.md"
+            "docs/examples/app/simple02.py",
+            "docs/examples/guide/dom2.py",
+            "docs/examples/app/event01.py",
+            "docs/examples/app/question01.py",
+            "docs/examples/app/suspend.py",
+            "docs/blog/posts/anatomy-of-a-textual-user-interface.md"
         ]
     },
     # II. Styling with CSS (TCSS)
@@ -77,16 +68,24 @@ PACKAGING_JOBS: List[Dict[str, Any]] = [
         "sub_path": ".",
         "output_filename": "textual_styling_css_context.md",
         "include": [
-            "examples/app/question02.py",
-            "examples/app/question02.tcss",
-            "examples/app/question03.py",
-            "examples/guide/css/nesting02.py",
-            "examples/guide/css/nesting02.tcss",
-            "examples/styles/border_all.py",
-            "examples/styles/text_style_all.py",
-            "examples/styles/background_transparency.py",
-            "examples/themes/todo_app.py",
-            "css_types/_template.md"
+            "examples/calculator.py",
+            "examples/code_browser.py",
+            "examples/dictionary.py",
+            "examples/five_by_five.py",
+            "examples/calculator.tcss",
+            "examples/code_browser.tcss",
+            "examples/dictionary.tcss",
+            "examples/five_by_five.tcss",
+            "docs/examples/app/question02.py",
+            "docs/examples/app/question02.tcss",
+            "docs/examples/app/question03.py",
+            "docs/examples/guide/css/nesting02.py",
+            "docs/examples/guide/css/nesting02.tcss",
+            "docs/examples/styles/border_all.py",
+            "docs/examples/styles/text_style_all.py",
+            "docs/examples/styles/background_transparency.py",
+            "docs/examples/themes/todo_app.py",
+            "docs/css_types/_template.md"
         ]
     },
     # III. Layout Management
@@ -95,15 +94,15 @@ PACKAGING_JOBS: List[Dict[str, Any]] = [
         "sub_path": ".",
         "output_filename": "textual_layout_management_context.md",
         "include": [
-            "examples/guide/layout/vertical_layout.py",
-            "examples/guide/layout/horizontal_layout.py",
-            "examples/guide/layout/grid_layout1.py",
-            "examples/guide/layout/combining_layouts.py",
-            "examples/guide/layout/dock_layout1_sidebar.py",
-            "examples/guide/layout/layers.py",
-            "how-to/center-things.md",
-            "how-to/work-with-containers.md",
-            "how-to/design-a-layout.md"
+            "docs/examples/guide/layout/vertical_layout.py",
+            "docs/examples/guide/layout/horizontal_layout.py",
+            "docs/examples/guide/layout/grid_layout1.py",
+            "docs/examples/guide/layout/combining_layouts.py",
+            "docs/examples/guide/layout/dock_layout1_sidebar.py",
+            "docs/examples/guide/layout/layers.py",
+            "docs/how-to/center-things.md",
+            "docs/how-to/work-with-containers.md",
+            "docs/how-to/design-a-layout.md"
         ]
     },
     # IV. Event Handling & Reactivity
@@ -112,16 +111,16 @@ PACKAGING_JOBS: List[Dict[str, Any]] = [
         "sub_path": ".",
         "output_filename": "textual_event_handling_reactivity_context.md",
         "include": [
-            "examples/events/custom01.py",
-            "examples/events/on_decorator02.py",
-            "examples/events/prevent.py",
-            "examples/guide/reactivity/refresh01.py",
-            "examples/guide/reactivity/refresh02.py",
-            "examples/guide/reactivity/validate01.py",
-            "examples/guide/reactivity/watch01.py",
-            "examples/guide/reactivity/computed01.py",
-            "examples/guide/reactivity/world_clock02.py",
-            "examples/events/dictionary.py"
+            "docs/examples/events/custom01.py",
+            "docs/examples/events/on_decorator02.py",
+            "docs/examples/events/prevent.py",
+            "docs/examples/guide/reactivity/refresh01.py",
+            "docs/examples/guide/reactivity/refresh02.py",
+            "docs/examples/guide/reactivity/validate01.py",
+            "docs/examples/guide/reactivity/watch01.py",
+            "docs/examples/guide/reactivity/computed01.py",
+            "docs/examples/guide/reactivity/world_clock02.py",
+            "docs/examples/events/dictionary.py"
         ]
     },
     # V. Input & Interaction
@@ -130,11 +129,11 @@ PACKAGING_JOBS: List[Dict[str, Any]] = [
         "sub_path": ".",
         "output_filename": "textual_input_interaction_context.md",
         "include": [
-            "examples/guide/input/key01.py",
-            "examples/guide/input/mouse01.py",
-            "examples/guide/input/binding01.py",
-            "examples/widgets/input_validation.py",
-            "examples/widgets/masked_input.py"
+            "docs/examples/guide/input/key01.py",
+            "docs/examples/guide/input/mouse01.py",
+            "docs/examples/guide/input/binding01.py",
+            "docs/examples/widgets/input_validation.py",
+            "docs/examples/widgets/masked_input.py"
         ]
     },
     # VI. Widget-Specific Examples
@@ -143,38 +142,38 @@ PACKAGING_JOBS: List[Dict[str, Any]] = [
         "sub_path": ".",
         "output_filename": "textual_widget_examples_context.md",
         "include": [
-            "examples/widgets/button.py",
-            "examples/widgets/checkbox.py",
-            "examples/widgets/collapsible.py",
-            "examples/widgets/data_table.py",
-            "examples/widgets/data_table_sort.py",
-            "examples/widgets/digits.py",
-            "examples/widgets/directory_tree.py",
-            "examples/widgets/input.py",
-            "examples/widgets/list_view.py",
-            "examples/widgets/loading_indicator.py",
-            "examples/widgets/log.py",
-            "examples/widgets/markdown_viewer.py",
-            "examples/widgets/markdown.py",
-            "examples/widgets/option_list_options.py",
-            "examples/widgets/placeholder.py",
-            "examples/widgets/pretty.py",
-            "examples/widgets/progress_bar.py",
-            "examples/widgets/radiobutton.py",
-            "examples/widgets/radioset.py",
-            "examples/widgets/rich_log.py",
-            "examples/widgets/rule.py",
-            "examples/widgets/select_widget.py",
-            "examples/widgets/selection_list_selections.py",
-            "examples/widgets/sparkline.py",
-            "examples/widgets/switch.py",
-            "examples/widgets/tabs.py",
-            "examples/widgets/tabbed_content.py",
-            "examples/widgets/text_area_example.py",
-            "examples/widgets/text_area_custom_language.py",
-            "examples/widgets/tree.py",
-            "examples/widgets/toast.py",
-            "examples/widgets/link.py"
+            "docs/examples/widgets/button.py",
+            "docs/examples/widgets/checkbox.py",
+            "docs/examples/widgets/collapsible.py",
+            "docs/examples/widgets/data_table.py",
+            "docs/examples/widgets/data_table_sort.py",
+            "docs/examples/widgets/digits.py",
+            "docs/examples/widgets/directory_tree.py",
+            "docs/examples/widgets/input.py",
+            "docs/examples/widgets/list_view.py",
+            "docs/examples/widgets/loading_indicator.py",
+            "docs/examples/widgets/log.py",
+            "docs/examples/widgets/markdown_viewer.py",
+            "docs/examples/widgets/markdown.py",
+            "docs/examples/widgets/option_list_options.py",
+            "docs/examples/widgets/placeholder.py",
+            "docs/examples/widgets/pretty.py",
+            "docs/examples/widgets/progress_bar.py",
+            "docs/examples/widgets/radiobutton.py",
+            "docs/examples/widgets/radioset.py",
+            "docs/examples/widgets/rich_log.py",
+            "docs/examples/widgets/rule.py",
+            "docs/examples/widgets/select_widget.py",
+            "docs/examples/widgets/selection_list_selections.py",
+            "docs/examples/widgets/sparkline.py",
+            "docs/examples/widgets/switch.py",
+            "docs/examples/widgets/tabs.py",
+            "docs/examples/widgets/tabbed_content.py",
+            "docs/examples/widgets/text_area_example.py",
+            "docs/examples/widgets/text_area_custom_language.py",
+            "docs/examples/widgets/tree.py",
+            "docs/examples/widgets/toast.py",
+            "docs/examples/widgets/link.py"
         ]
     },
     # VII. Advanced Topics & Utilities
@@ -183,20 +182,20 @@ PACKAGING_JOBS: List[Dict[str, Any]] = [
         "sub_path": ".",
         "output_filename": "textual_advanced_topics_context.md",
         "include": [
-            "examples/guide/workers/weather03.py",
-            "examples/guide/workers/weather05.py",
-            "examples/guide/command_palette/command02.py",
-            "examples/guide/widgets/checker04.py",
-            "examples/guide/compound/byte03.py",
-            "examples/guide/testing/test_rgb.py",
-            "how-to/package-with-hatch.md",
-            "how-to/style-inline-apps.md",
-            "how-to/render-and-compose.md",
-            "blog/posts/steal-this-code.md",
-            "blog/posts/rich-inspect.md",
-            "blog/posts/toolong-retrospective.md",
-            "blog/posts/textual-web.md",
-            "blog/posts/textual-serve-files.md"
+            "docs/examples/guide/workers/weather03.py",
+            "docs/examples/guide/workers/weather05.py",
+            "docs/examples/guide/command_palette/command02.py",
+            "docs/examples/guide/widgets/checker04.py",
+            "docs/examples/guide/compound/byte03.py",
+            "docs/examples/guide/testing/test_rgb.py",
+            "docs/how-to/package-with-hatch.md",
+            "docs/how-to/style-inline-apps.md",
+            "docs/how-to/render-and-compose.md",
+            "docs/blog/posts/steal-this-code.md",
+            "docs/blog/posts/rich-inspect.md",
+            "docs/blog/posts/toolong-retrospective.md",
+            "docs/blog/posts/textual-web.md",
+            "docs/blog/posts/textual-serve-files.md"
         ]
     },
     # VIII. Comprehensive Tutorials & Demos
@@ -205,7 +204,7 @@ PACKAGING_JOBS: List[Dict[str, Any]] = [
         "sub_path": ".",
         "output_filename": "textual_tutorials_demos_context.md",
         "include": [
-            "tutorial.md"
+            "docs/tutorial.md"
         ]
     },
     # MCP: Part 1 - Project Overview & Philosophy (SAFE)
@@ -269,15 +268,31 @@ PACKAGING_JOBS: List[Dict[str, Any]] = [
             "docs/docs/tools/debugging.mdx"
         ]
     },
-    # FAST-AGENT: Core Examples and Tests
+    # FAST-AGENT: Examples
     {
         "repo_name": "fast-agent",
         "sub_path": ".",
-        "output_filename": "fast_agent_core_context.md",
+        "output_filename": "fast_agent_examples_context.md",
         "include": [
-            "examples/**",
+            "examples/**"
+        ]
+    },
+    # FAST-AGENT: Tests
+    {
+        "repo_name": "fast-agent",
+        "sub_path": ".",
+        "output_filename": "fast_agent_tests_context.md",
+        "include": [
             "tests/e2e/**",
-            "tests/integration/**",
+            "tests/integration/**"
+        ]
+    },
+    # FAST-AGENT: Scripts
+    {
+        "repo_name": "fast-agent",
+        "sub_path": ".",
+        "output_filename": "fast_agent_scripts_context.md",
+        "include": [
             "scripts/event_replay.py",
             "scripts/event_summary.py",
             "scripts/test_package_install.sh"
@@ -292,19 +307,4 @@ PACKAGING_JOBS: List[Dict[str, Any]] = [
             "README.md"
         ]
     }
-]
-
-# Output directory configuration
-OUTPUT_DIR = "generated_context"
-
-def get_packaging_jobs() -> List[Dict[str, Any]]:
-    """Get the list of packaging jobs."""
-    return PACKAGING_JOBS
-
-def get_default_ignore_patterns() -> set:
-    """Get the default ignore patterns."""
-    return DEFAULT_IGNORE_PATTERNS.copy()
-
-def get_output_dir() -> str:
-    """Get the output directory name."""
-    return OUTPUT_DIR 
+] 
